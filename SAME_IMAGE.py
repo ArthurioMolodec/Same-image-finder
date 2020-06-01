@@ -23,7 +23,7 @@ def resize_image(input_image_path,output_image_path,scale,output):
  
 def compression(array_files,name_postfix="changed",folder="changed",scaler=4,output=False):
 	for i in array_files:
-		resize_image(i,folder+"\\"+".".join(i.split(".")[:-1])+name_postfix+"."+i.split(".")[::-1][0],scale=(scaler,scaler),output=output)
+		resize_image(i,folder+"/"+".".join(i.split(".")[:-1])+name_postfix+"."+i.split(".")[::-1][0],scale=(scaler,scaler),output=output)
 
 ######################################################
 
@@ -63,8 +63,8 @@ def img_recon1(img1,img_current,dist_multiplier,output):
 					   matchesMask = matchesMask,
 					   flags = 0)
 	return ({"matches_count":matches_count,"matches_count_no_distance_check":matches_count_no_distance_check,"matches_len":matches_len})
-	#img3 = cv2.drawMatchesKnn(img1,kp1,img2,kp2,matches,None,**draw_params)
-	#plt.imshow(img3,),plt.show()
+	# img3 = cv2.drawMatchesKnn(img1,kp1,img2,kp2,matches,None,**draw_params)
+	# plt.imshow(img3,),plt.show()
 	
 
 ######################################################
@@ -107,9 +107,9 @@ def tryparse(input):
 def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=3,output=False):
 	start_time = time.time()
 	if type(imgs_orig) == str:
-		imgs_orig = list(map(lambda a : imgs_orig+"\\"+a, os.listdir(path=imgs_orig)))
+		imgs_orig = list(map(lambda a : imgs_orig+"/"+a, os.listdir(path=imgs_orig)))
 	if type(imgs_search_in) == str:
-		imgs_search_in = list(map(lambda a : imgs_search_in+"\\"+a, os.listdir(path=imgs_search_in)))
+		imgs_search_in = list(map(lambda a : imgs_search_in+"/"+a, os.listdir(path=imgs_search_in)))
 	
 	
 	results = []
@@ -131,7 +131,7 @@ def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=
 		i_orig = i
 		# i = "what\\"+i
 		compression([i],scaler=scaler,output=output)
-		i = "changed"+"\\"+".".join(i.split(".")[:-1])+"changed"+"."+i.split(".")[::-1][0]
+		i = "changed"+"/"+".".join(i.split(".")[:-1])+"changed"+"."+i.split(".")[::-1][0]
 		img1 = cv2.imread(i,0)
 		for img_current in imgs_search_in:
 			# img_current = "there\\"+img_current
