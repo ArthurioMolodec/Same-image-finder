@@ -21,9 +21,19 @@ def resize_image(input_image_path,output_image_path,scale,output):
     # resized_image.show()
     resized_image.save(output_image_path)
  
-def compression(array_files,name_postfix="changed",folder="changed",scaler=4,output=False):
+def compression(array_files,name_postfix="changed",folder="changed",scaler={-1:[0,0]},output=False,scaler_array_pos=0):
 	for i in array_files:
-		resize_image(i,folder+"/"+".".join(i.split(".")[:-1])+name_postfix+"."+i.split(".")[::-1][0],scale=(scaler,scaler),output=output)
+		original_image = Image.open(i)
+		width, height = original_image.size
+		#if(width<=50 or height<=50):
+			#return False
+		minimum = min([width, height])
+		for max,scalers in scaler.items():
+			if(max>=minimum or max==-1):
+				scaler_c = scalers[scaler_array_pos]
+				break
+		resize_image(i,folder+"/"+".".join(i.split(".")[:-1])+name_postfix+"."+i.split(".")[::-1][0],scale=(scaler_c,scaler_c),output=output)
+		return True
 
 ######################################################
 
@@ -71,7 +81,7 @@ def img_recon1(img1,img_current,dist_multiplier,output):
 
 #SECOND VARIANT
 
-def img_recon2(img1,img_current,dist_multiplier):
+def img_recon2(img1,img_current,dist_multiplier,output):
 	img2 = cv2.imread(img_current,0) # trainImage
 	
 	
@@ -103,8 +113,59 @@ def tryparse(input):
 		return bool(float(input)) if float(input)!=0 else True
 	except:
 		return False
+ALGOS = {1:{"SCALER_RANGE":[{"MIN":2,"MAX":3,"STEP":0.5},{"MIN":1/3,"MAX":1/2,"STEP":0.05}],"DIST_MULTIPLIER_RANGE":{"MIN":0.7,"MAX":0.8,"STEP":0.05}},2:{"SCALER_RANGE":[{"MIN":2,"MAX":3,"STEP":0.5},{"MIN":1/3,"MAX":1/2,"STEP":0.05}],"DIST_MULTIPLIER_RANGE":0.75}}
+def GetSameImageAlgo(ALGO_ID,imgs_orig="what",imgs_search_in="there"):
+	results = []
+	if(ALGO_ID==1):
+		ALGO_DATA = ALGOS[ALGO_ID]
+		SCALER_RANGE = ALGO_DATA['SCALER_RANGE']
+		DIST_MULTIPLIER_RANGE = ALGO_DATA['DIST_MULTIPLIER_RANGE']
+		SCALER_RANGE_WHAT = np.arange(SCALER_RANGE[0]['MIN'],SCALER_RANGE[0]['MAX']+SCALER_RANGE[0]['STEP'],SCALER_RANGE[0]['STEP'])
+		DIST_MULTIPLIER_RANGE = np.arange(DIST_MULTIPLIER_RANGE['MIN'],round(DIST_MULTIPLIER_RANGE['MAX']+DIST_MULTIPLIER_RANGE['STEP'],4),DIST_MULTIPLIER_RANGE['STEP'])
+		SCALER_RANGE_THERE = np.arange(SCALER_RANGE[1]['MIN'],SCALER_RANGE[1]['MAX']+SCALER_RANGE[1]['STEP'],SCALER_RANGE[1]['STEP'])
 
-def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=3,output=False):
+		for SCALER_WHAT in SCALER_RANGE_WHAT:
+			for SCALER_THERE in SCALER_RANGE_THERE:
+				for DIST_MULTIPLIER in DIST_MULTIPLIER_RANGE:
+					try:
+						results.append(GetSame(imgs_orig,imgs_search_in,dist_multiplier=float(DIST_MULTIPLIER),scaler=[float(SCALER_WHAT),float(SCALER_THERE)]))
+						print("Added")
+					except Exception as e:
+						print("Error due {} {} {}".format(DIST_MULTIPLIER,SCALER_WHAT,SCALER_THERE))
+						print(e)
+		not_sorted=True
+		while(not_sorted):
+			not_sorted=False
+			for m in range(len(results)-1):
+				if(results[m+1]['RESULT'][0]['result']>results[m]['RESULT'][0]['result']):
+					results[m],results[m+1] = results[m+1],results[m]
+					not_sorted=True
+					continue
+	if(ALGO_ID==2):
+		ALGO_DATA = ALGOS[ALGO_ID]
+		SCALER_RANGE = ALGO_DATA['SCALER_RANGE']
+		DIST_MULTIPLIER_RANGE = ALGO_DATA['DIST_MULTIPLIER_RANGE']
+		SCALER_RANGE_WHAT = np.arange(SCALER_RANGE[0]['MIN'],SCALER_RANGE[0]['MAX']+SCALER_RANGE[0]['STEP'],SCALER_RANGE[0]['STEP'])
+		DIST_MULTIPLIER = DIST_MULTIPLIER_RANGE
+		SCALER_RANGE_THERE = np.arange(SCALER_RANGE[1]['MIN'],SCALER_RANGE[1]['MAX']+SCALER_RANGE[1]['STEP'],SCALER_RANGE[1]['STEP'])
+
+		for SCALER_WHAT in SCALER_RANGE_WHAT:
+			for SCALER_THERE in SCALER_RANGE_THERE:
+				print("Error due {} {} {}".format(DIST_MULTIPLIER,SCALER_WHAT,SCALER_THERE))
+
+				results.append(GetSame(imgs_orig,imgs_search_in,dist_multiplier=float(DIST_MULTIPLIER),scaler=[float(SCALER_WHAT),float(SCALER_THERE)]))
+		not_sorted=True
+		while(not_sorted):
+			not_sorted=False
+			for m in range(len(results)-1):
+				if(results[m+1]['RESULT'][0]['result']>results[m]['RESULT'][0]['result']):
+					results[m],results[m+1] = results[m+1],results[m]
+					not_sorted=True
+					continue
+	return results
+def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=[3,1/3],output=False):
+	fin_res=[]
+	fin_res_bad=[]
 	start_time = time.time()
 	if type(imgs_orig) == str:
 		imgs_orig = list(map(lambda a : imgs_orig+"/"+a, os.listdir(path=imgs_orig)))
@@ -119,21 +180,35 @@ def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=
 	else:
 		a = 0.75
 		
-	b = scaler
-	if(tryparse(b)):
-		b = float(b)
-	else:
-		b = 3
+	# b = scaler[0]
+	# if(tryparse(b)):
+		# b = float(b)
+	# else:
+		# b = 3
+	
+	# c = scaler[1]
+	# if(tryparse(c)):
+		# c = float(c)
+	# else:
+		# c = 1/3
 	dist_multiplier = a
-	scaler = b
+	# scaler[0] = b
+	# scaler[1] = c
 
 	for i in imgs_orig:
 		i_orig = i
 		# i = "what\\"+i
-		compression([i],scaler=scaler,output=output)
+		if(not compression([i],scaler=scaler,scaler_array_pos=0,output=output)):
+			fin_res_bad.append({"what":i,"there":"-","result":"-1","comment":"dropped (too small)"}) 
+			continue
 		i = "changed"+"/"+".".join(i.split(".")[:-1])+"changed"+"."+i.split(".")[::-1][0]
 		img1 = cv2.imread(i,0)
 		for img_current in imgs_search_in:
+			if(not compression([img_current],scaler=scaler,name_postfix="changed1",scaler_array_pos=1,output=output)):
+				fin_res_bad.append({"what":"-","there":img_current,"result":"-1","comment":"dropped (too small)"}) 
+				continue
+			img_current = "changed"+"/"+".".join(img_current.split(".")[:-1])+"changed1"+"."+img_current.split(".")[::-1][0]
+			# print(img_current)
 			# img_current = "there\\"+img_current
 			if(output):
 				print(dist_multiplier)
@@ -151,7 +226,7 @@ def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=
 				results[m],results[m+1] = results[m+1],results[m]
 				not_sorted=True
 				continue
-	fin_res=[]
+	
 	for i in results:
 		add=True
 		for res in fin_res:
@@ -159,6 +234,7 @@ def GetSame(imgs_orig="what",imgs_search_in="there",dist_multiplier=0.75,scaler=
 				add=False
 		if(add and i['result']>0):
 			fin_res.append({"what":i['what'],"there":i['there'],"result":i['result']}) 
+	fin_res = fin_res+fin_res_bad
 	if(output):
 		for i in results:
 			print(i)
